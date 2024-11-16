@@ -12,7 +12,7 @@ if isClient() or not isServer() then return end
 
 (function()
     -- The packet-module identity.
-    local MODULE_ID = 'EtherHammer';
+    local MODULE_ID = 'EtherHammerX';
 
     --- (Login statuses)
     local STATUS_AWAIT_GREET = 1;
@@ -64,13 +64,12 @@ if isClient() or not isServer() then return end
         ---
         --- @return void
         local function requestVerification(player, username)
-
             -- Create server-side key-fragment.
             local fragment1 = getTimeInMillis();
             playerFragments[username] = fragment1;
 
             local packet = Packet(MODULE_ID, 'join_request', { message = fragment1 });
-            packet:encrypt('EtherHammer_' .. username, function()
+            packet:encrypt('EtherHammerX_' .. username, function()
                 packet:sendToPlayer(player);
                 -- Start the timer only after encrypting the packet and sending it.
                 playerStatuses[username] = STATUS_SENT_VERIFICATION_REQUEST;
@@ -109,12 +108,10 @@ if isClient() or not isServer() then return end
         ---
         --- @return void
         local function processLogout(username)
-
             -- Dispose of status & request times.
             playerStatuses[username] = nil;
             playerRequestLast[username] = nil;
             playerKeys[username] = nil;
-
         end
 
         --- (Generic kick-player function)
@@ -142,7 +139,6 @@ if isClient() or not isServer() then return end
             local status = playerStatuses[username];
 
             if status == STATUS_AWAIT_GREET then
-                
                 local timeNow = getTimeInMillis();
                 local timeRequest = playerRequestLast[username];
 
@@ -155,7 +151,6 @@ if isClient() or not isServer() then return end
                     kick(player, username);
                     return;
                 end
-
             elseif status == STATUS_AWAIT_VERIFICATION then
                 requestVerification(player, username);
             elseif status == STATUS_SENT_VERIFICATION_REQUEST then
@@ -218,11 +213,8 @@ if isClient() or not isServer() then return end
                 playerStatuses[username] = STATUS_VERIFIED;
 
                 if id == 'join_response' then
-                    print('[EtherHammer] :: Player \'' .. tostring(username) .. '\' verified.');
-                elseif id == 'heartbeat_response' then
-                    -- print('[EtherHammer] :: Player \'' .. tostring(username) .. '\' reverified.');
+                    print('[EtherHammerX] :: Player \'' .. tostring(username) .. '\' verified.');
                 end
-
             elseif id == 'handshake_request' then
                 local username = player:getUsername();
                 requestVerification(player, username);
@@ -236,14 +228,14 @@ if isClient() or not isServer() then return end
             playerStatuses[username] = STATUS_AWAIT_GREET;
             playerKeys[username] = MODULE_ID .. '_' .. username;
 
-            print('[EtherHammer] :: Player \'' .. tostring(username) .. '\' joined the game.');
+            print('[EtherHammerX] :: Player \'' .. tostring(username) .. '\' joined the game.');
             onPlayerTick(player, username);
         end
 
         local function onPlayerLogout(player)
             local username = player:getUsername();
             processLogout(username);
-            print('[EtherHammer] :: Player \'' .. tostring(username) .. '\' left the game.');
+            print('[EtherHammerX] :: Player \'' .. tostring(username) .. '\' left the game.');
         end
 
         --- @type number
@@ -264,7 +256,6 @@ if isClient() or not isServer() then return end
         end
 
         Events.OnClientCommand.Add(function(module, command, player, args)
-            
             if module ~= MODULE_ID then return end
 
             local username = player:getUsername();
@@ -274,7 +265,6 @@ if isClient() or not isServer() then return end
             packet:decrypt(playerKeys[username], function()
                 onReceivePacket(player, packet.command, packet.data);
             end);
-
         end);
 
         Events.OnServerPlayerLogin.Add(onPlayerLogin);

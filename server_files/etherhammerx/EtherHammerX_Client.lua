@@ -11,7 +11,7 @@ if not isClient() or isServer() then return end
 
 (function()
     -- The packet-module identity.
-    local MODULE_ID = 'EtherHammer';
+    local MODULE_ID = 'EtherHammerX';
 
     --- @type boolean
     --- If true, a ticket is submitted to the admins that the player is hacking.
@@ -152,7 +152,6 @@ if not isClient() or isServer() then return end
         local function onReceivePacket(id, data)
             local username = getOnlineUsername();
             if id == 'join_request' or 'heartbeat_request' then
-
                 --------------------------------------
                 -- Perform the anti-cheat checks here.
                 if detectEtherHack(getGlobalFunctions()) then
@@ -201,8 +200,6 @@ if not isClient() or isServer() then return end
                 onReceivePacket(packet.command, packet.data);
             end);
         end);
-
-        -- listener:listen(MODULE_ID, DEFAULT_KEY, onReceivePacket);
 
         local packet = Packet(MODULE_ID, 'handshake_request');
         packet:encrypt(key, function()

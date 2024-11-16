@@ -1,0 +1,6 @@
+name=Asledgehammer - ModLoader
+poster=./poster.png
+description=arf
+id=asledgehammer_modloader
+url=https://github.com/asledgehammer/Asledgehammer-ModLoader
+require=asledgehammer_utilities

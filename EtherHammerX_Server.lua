@@ -7,6 +7,17 @@
 local Packet = require 'asledgehammer/network/Packet';
 local PlayerListener = require 'asledgehammer/network/PlayerListener';
 
+-- Check to see if CraftHammer is installed.
+if kickPlayerFromServer == nil then
+    print(
+        '[EtherHammerX] :: !!! WARNING: CraftHammer isn\'t installed on the server! ' ..
+        'Kicking players from server-side is disabled. !!!'
+    );
+    print('[EtherHammerX] :: To install CraftHammer, follow this link and grab the latest version here: '
+        .. 'XLps://discord.gg/r6PeSFuJDU'
+    );
+end
+
 -- (Only run on server-side of a multiplayer session)
 if isClient() or not isServer() then return end
 
@@ -122,6 +133,13 @@ if isClient() or not isServer() then return end
         ---
         --- @return void
         local function kick(player, username, reason)
+            if kickPlayerFromServer == nil then
+                print(
+                    '# [EtherHammerX] :: !!! WARNING: CraftHammer isn\'t installed on the server! ' ..
+                    'Kicking players from server-side is disabled. (Cannot kick player "' .. username .. '") !!!'
+                );
+                return;
+            end
             local message = 'Kicking player \'' .. username .. '\'.';
             if reason then
                 message = message .. ' (Reason: \'' .. reason .. '\')';

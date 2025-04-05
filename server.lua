@@ -1,6 +1,6 @@
 ---[[
 --- EtherHammer - Server Script.
---- 
+---
 --- @author asledgehammer, JabDoesThings 2025
 ---]]
 
@@ -13,6 +13,34 @@ if isClient() or not isServer() then return end
 (function()
     local info = function(message)
         print('[EtherHammerX] :: ' .. tostring(message));
+    end
+
+    local pad2 = function(str)
+        if #str == 1 then return '0' .. str end
+        return str;
+    end
+
+    --- Converts a millisecond UNIX timestamp to a human-readable ISO-8601 formatted date string.
+    --- @param time number The time in milliseconds. (use `getTimeInMillis()`)
+    ---
+    --- @return string date The formatted date as a string.
+    local toISO8601 = function(time)
+        local d = os.date("*t", Math.floor(time / 1000));
+        local year = tostring(d.year);
+        local month = pad2(tostring(d.month));
+        local day = pad2(tostring(d.day));
+        local hour = pad2(tostring(d.hour));
+        local min = pad2(tostring(d.min));
+        local sec = pad2(tostring(d.sec));
+        local msec = tostring(time);
+        msec = string.sub(msec, #time - 3);
+        return year .. '-' .. month .. '-' .. day .. 'T' .. hour .. ':' .. min .. ':' .. sec .. '.' .. msec .. 'Z';
+    end
+
+    local log = function(message)
+        local writer = getFileWriter('ModLoader/mods/EtherHammerX/reports.log', true, true);
+        writer:writeln('[' .. toISO8601(getTimeInMillis()) .. '] :: ' .. message);
+        writer:close();
     end
 
     -- The packet-module identity.
@@ -42,8 +70,8 @@ if isClient() or not isServer() then return end
     end
 
     local function run()
-        --- @type table<string, boolean>
-        local verifiedOnce = {};
+        -- - @type table<string, boolean>
+        -- local verifiedOnce = {};
 
         --- @type table<string, number>
         local playerStatuses = {};
@@ -122,6 +150,7 @@ if isClient() or not isServer() then return end
             if reason then
                 message = message .. ' (Reason: \'' .. reason .. '\')';
             end
+            log(message);
             processLogout(username);
             kickPlayerFromServer(player, reason);
         end
@@ -146,10 +175,10 @@ if isClient() or not isServer() then return end
                 -- The player is now verified.
                 playerStatuses[username] = STATUS_VERIFIED;
 
-                if not verifiedOnce[username] then
-                    info('Player \'' .. tostring(username) .. '\' verified.');
-                    verifiedOnce[username] = true;
-                end
+                -- if not verifiedOnce[username] then
+                -- info('Player \'' .. tostring(username) .. '\' verified.');
+                -- verifiedOnce[username] = true;
+                -- end
             elseif id == { string = 'HANDSHAKE_REQUEST_COMMAND' } then
                 -- The initial handshake request requires a known key. Use the initially-generated key here.
                 local username = player:getUsername();
@@ -176,7 +205,7 @@ if isClient() or not isServer() then return end
                 local type = data.type;
                 local reason = data.reason;
                 local message = type;
-                if reason then message = message .. ' (reason: ' .. reason .. ')' end
+                if reason then message = message .. ' (' .. reason .. ')' end
                 info(username .. ' was kicked for ' .. message);
                 kick(player, username, message);
             end

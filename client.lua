@@ -1,15 +1,8 @@
---[[
--- EtherHammer - Client Script.
---
--- Injected variables:
---  - MODULES - The EHX modules running in the server.
---  - MODULE_ID - The ID of the module given from the workshop item.
---  - HEARTBEAT_REQUEST_COMMAND - The name of the command 'heartbeat_request'.
---  - HEARTBEAT_RESPONSE_COMMAND - The name of the command 'heartbeat_response'.
---  - HANDSHAKE_REQUEST_COMMAND - The name of the command 'handshake_request'.
---
--- @author asledgehammer, JabDoesThings, 2025
---]]
+---[[
+--- EtherHammer - Client Script.
+--- 
+--- @author asledgehammer, JabDoesThings 2025
+---]]
 
 local Packet = require 'asledgehammer/network/Packet';
 
@@ -45,7 +38,7 @@ if not isClient() or isServer() then return end
     --- Parameter(s):
     ---  - {HACK} - The name of the hack.
     ---
-    local TICKET_MSG = 'Hello, I am using {HACK}, detected by EtherHammer.';
+    local TICKET_MSG = 'Hello, I am using {HACK}, detected by EtherHammerX.';
 
     local disconnected = false;
 
@@ -58,6 +51,82 @@ if not isClient() or isServer() then return end
         pauseSoundAndMusic();
         setShowPausedMessage(true);
         getCore():quit();
+    end
+
+    function api.getGlobalTables()
+        local array = {};
+        for name, value in pairs(_G) do
+            if type(value) == 'table' then
+                -- [global reference name, pseudo-class type name]
+                table.insert(array, name);
+            end
+        end
+        table.sort(array, function(a, b) return a:upper() < b:upper() end);
+        return array;
+    end
+
+    function api.getGlobalClasses()
+        local array = {};
+        for name, value in pairs(_G) do
+            if type(value) == 'table' and value.Type ~= nil then
+                -- [global reference name, pseudo-class type name]
+                table.insert(array, { globalName = name, typeName = value.Type });
+            end
+        end
+        table.sort(array, function(a, b) return a.globalName < b.globalName end);
+        return array;
+    end
+
+    function api.getGlobalFunctions()
+        local array = {};
+        for name, value in pairs(_G) do
+            -- Java API:
+            --     'function <memory address>'
+            -- Lua API:
+            --     'closure <memory address>'
+            if type(value) == 'function' and string.find(tostring(value), 'function ') == 1 then
+                table.insert(array, name);
+            end
+        end
+        table.sort(array, function(a, b) return a:upper() < b:upper() end);
+        return array;
+    end
+
+    function api.arrayContains(array, value)
+        for _, next in ipairs(array) do if value == next then return true end end
+        return false
+    end
+
+    function api.anyExists(list, match)
+        for i = 1, #match do if api.arrayContains(list, match[i]) then return true end end
+        return false;
+    end
+
+    function api.printGlobalClasses(classes)
+        classes = classes or api.getGlobalClasses();
+        local s = 'Global Class(es) (' .. tostring(#classes) .. '):\n';
+        for _, names in ipairs(classes) do
+            s = s .. '\t' .. tostring(names.globalName) .. ' (class.Type = ' .. tostring(names.typeName) .. ')\n';
+        end
+        print(s);
+    end
+
+    function api.printGlobalTables(tables)
+        tables = tables or api.getGlobalTables();
+        local s = 'Global Table(s) (' .. tostring(#tables) .. '):\n';
+        for _, name in ipairs(tables) do
+            s = s .. '\t' .. tostring(name) .. '\n';
+        end
+        print(s);
+    end
+
+    function api.printGlobalFunctions(funcs)
+        funcs = funcs or api.getGlobalFunctions();
+        local s = 'Global function(s) (' .. tostring(#funcs) .. '):\n';
+        for _, funcName in ipairs(funcs) do
+            s = s .. '\t' .. tostring(funcName) .. '\n';
+        end
+        print(s);
     end
 
     function api.ticketExists(author, message, callback)
@@ -100,14 +169,11 @@ if not isClient() or isServer() then return end
     function api.report(type, reason, disconnect)
         local message = type;
         if reason then message = message .. ' (' .. reason .. ')' end
-        if SEND_TICKET_ON_KICK then
-            message = string.gsub(TICKET_MSG, '{HACK}', message);
-            api.submitTicket(message, function()
-                if disconnect then api.disconnect() end
-            end)
-        else
-            if disconnect then api.disconnect() end
-        end
+
+        local packet = Packet(MODULE_ID, { string = 'REPORT_COMMAND' }, { type = type, reason = reason });
+        packet:encryptAndSendToServer(key);
+
+        if disconnect then api.disconnect() end
     end
 
     -- Force the table to be read-only. Rogue or maliciously-injected modules won't be able to mutate the API table.
@@ -138,19 +204,20 @@ if not isClient() or isServer() then return end
             end
 
             if packet.command == { string = 'HEARTBEAT_REQUEST_COMMAND' } then
+
+                -- Generate the expected client-key fragment.
+                local serverFragment = packet.data.message;
+                local clientFragment = clientKey(getPlayer());
+
+                -- Send back the next packet as encrypted with the new key.
+                key = serverFragment .. clientFragment;
+
                 -- (Update modules that run more than once)
                 runModules();
 
                 -- (No need to do anything else if disconnected)
                 if disconnected then return end
-                
-                -- Generate the expected client-key fragment.
-                local serverFragment = packet.data.message;
-                local clientFragment = clientKey(getPlayer());
-                
-                -- Send back the next packet as encrypted with the new key.
-                key = serverFragment .. clientFragment;
-                
+
                 packet = Packet(MODULE_ID, { string = 'HEARTBEAT_RESPONSE_COMMAND' }, {
                     key = key,
                     message = clientFragment

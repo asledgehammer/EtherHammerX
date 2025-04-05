@@ -1,14 +1,6 @@
 ---[[
 --- EtherHammer - Server Script.
---
--- Injected variables:
---  - MODULE_ID - The ID of the module given from the workshop item.
---  - JOIN_REQUEST_COMMAND - The name of the command 'join_request'.
---  - JOIN_RESPONSE_COMMAND - The name of the command 'join_response'.
---  - HEARTBEAT_REQUEST_COMMAND - The name of the command 'heartbeat_request'.
---  - HEARTBEAT_RESPONSE_COMMAND - The name of the command 'heartbeat_response'.
---  - HANDSHAKE_REQUEST_COMMAND - The name of the command 'handshake_request'.
----
+--- 
 --- @author asledgehammer, JabDoesThings 2025
 ---]]
 
@@ -130,6 +122,7 @@ if isClient() or not isServer() then return end
             if reason then
                 message = message .. ' (Reason: \'' .. reason .. '\')';
             end
+            processLogout(username);
             kickPlayerFromServer(player, reason);
         end
 
@@ -177,6 +170,15 @@ if isClient() or not isServer() then return end
 
                 -- The expected response should be in the new key.
                 playerKeys[username] = serverKeyFragment .. playerFuncs[username](player);
+            elseif id == { string = 'REPORT_COMMAND' } then
+                -- The initial handshake request requires a known key. Use the initially-generated key here.
+                local username = player:getUsername();
+                local type = data.type;
+                local reason = data.reason;
+                local message = type;
+                if reason then message = message .. ' (reason: ' .. reason .. ')' end
+                info(username .. ' was kicked for ' .. message);
+                kick(player, username, message);
             end
         end
 

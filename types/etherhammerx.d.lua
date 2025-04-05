@@ -28,7 +28,7 @@
 
 --- MARK: Client
 
---- @alias EtherHammerXClientModule fun(api: EtherHammerXClientAPI, options: table<string, any>): boolean | nil, string | nil If true, the hack is detected. The 2nd argument passed is the name or identifier of the hack detected.
+--- @alias EtherHammerXClientModule fun(api: EtherHammerXClientAPI, options: table<string, any>): void
 --- @alias ClientKeyFragmentCallback fun(player: IsoPlayer): string
 --- @alias EtherHammerModule {name: string, code: fun(player: IsoPlayer): boolean, runOnce: boolean}
 
@@ -52,7 +52,7 @@ function EtherHammerXClientAPI.submitTicket(message, callback) end
 
 --- Only perform the actual kick here. We want to check and see if a ticket exists first with
 --- our message. (This prevents ticket spamming the server)
---- 
+---
 --- @return void
 function EtherHammerXClientAPI.disconnect() end
 
@@ -61,12 +61,45 @@ function EtherHammerXClientAPI.isDisconnected() end
 
 --- Reports the anti-cheat to the server.
 ---
---- @param type string
---- @param reason string
---- @param disconnect boolean
+--- @param type string The type of report. (E.G: module, type of hack)
+--- @param reason? string (Optional) Additional information provided by the report.
+--- @param disconnect? boolean (Optional) If true, the client will disconnect itself. If other actions are desired prior to this call, do not set this to true.
 ---
 --- @return void
 function EtherHammerXClientAPI.report(type, reason, disconnect) end
+
+--- @return {globalName: string, typeName: string}[] ClassNames The first string is the `_G[ID]`. The second string is the `class.Type` value.
+function EtherHammerXClientAPI.getGlobalClasses() end
+
+--- @return string[] FunctionNames The table names stored as `_G[ID]`.
+function EtherHammerXClientAPI.getGlobalTables() end
+
+--- @return string[] FunctionNames The function names stored as `_G[ID]`.
+function EtherHammerXClientAPI.getGlobalFunctions() end
+
+--- @param classes? {globalName: string, typeName: string}[] If not provided, the API will fetch them. If provided, the function will execute way faster.
+function EtherHammerXClientAPI.printGlobalClasses(classes) end
+
+--- @param tables? string[] If not provided, the API will fetch them. If provided, the function will execute way faster.
+function EtherHammerXClientAPI.printGlobalTables(tables) end
+
+--- @param functions? string[] If not provided, the API will fetch them. If provided, the function will execute way faster.
+function EtherHammerXClientAPI.printGlobalFunctions(functions) end
+
+--- Checks if an array has a value stored.
+---
+--- @param array string[] The array to check.
+--- @param value string The value to check.
+--- @return boolean True if one or more values are in the array.
+function EtherHammerXClientAPI.arrayContains(array, value) end
+
+--- Checks if one or more values exists in a list.
+---
+--- @param list string[] The list to test.
+--- @param match string[] The list to match.
+---
+--- @return boolean True if one or more matches.
+function EtherHammerXClientAPI.anyExists(list, match) end
 
 --- MARK: Server
 

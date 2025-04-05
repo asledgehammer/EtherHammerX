@@ -33,10 +33,6 @@ return {
     --- @type number
     TIME_TO_TICK = 5,
 
-        --- @type boolean
-    --- If true, a ticket is submitted to the admins that the player is hacking.
-    SUBMIT_TICKET_ON_KICK = true,
-
     --- The key-generation profile to use. All server and client key fragments are calculated and audited using these functions.
     ---
     --- Filename(s) must be consistent:
@@ -60,7 +56,10 @@ return {
         etherhack = {
             name = 'EtherHack',
             options = {
-                foo = 'bar'
+                --- @type boolean
+                --- 
+                --- If true, a ticket is submitted to the admins that the player is hacking.
+                SUBMIT_TICKET_ON_KICK = true,
             }
         },
         -- unlockvizion = {

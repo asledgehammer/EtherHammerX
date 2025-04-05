@@ -36,8 +36,8 @@ return {
     --- The key-generation profile to use. All server and client key fragments are calculated and audited using these functions.
     ---
     --- Filename(s) must be consistent:
-    --- - `<KEY_ID>_client.lua`
-    --- - `<KEY_ID>_server.lua`
+    --- - `keys/<KEY_ID>_client.lua`
+    --- - `keys/<KEY_ID>_server.lua`
     ---
     --- NOTE: In order to audit the client key-fragment against hack-tampering / forging keys, the client key-fragment must be
     --- consistent if ran on both the client and server, otherwise the audit will fail.
@@ -45,11 +45,10 @@ return {
     --- @type string
     KEY = 'basic',
 
-    --- All modules to check for anti-cheats are defined here. If modules are tables, 'client' and 'server' module files should be defined. If string is provided, a client-module is provided.
+    --- All modules to check for anti-cheats are defined here.
     ---
-    --- Filename(s) must be:
-    --- - `<MODULE_ID>_client.lua`
-    --- - `<MODULE_ID>_server.lua`
+    --- Filename must be:
+    --- - `modules/<MODULE_ID>.lua`
     ---
     --- NOTE: Server-side modules are optional.
     MODULES = {

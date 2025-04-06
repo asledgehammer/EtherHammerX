@@ -33,7 +33,7 @@ if isClient() or not isServer() then return end
         local min = pad2(tostring(d.min));
         local sec = pad2(tostring(d.sec));
         local msec = tostring(time);
-        msec = string.sub(msec, #time - 3);
+        msec = string.sub(msec, #msec - 3);
         return year .. '-' .. month .. '-' .. day .. 'T' .. hour .. ':' .. min .. ':' .. sec .. '.' .. msec .. 'Z';
     end
 

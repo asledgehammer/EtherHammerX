@@ -1,3 +1,5 @@
+![](https://i.imgur.com/JY6TgZJ.png)
+
 ## About
 EtherHammerX is a client-side anti-cheat framework for the game Project Zomboid. The framework aims to:
 - Provide "out-of-the-box" anti-cheat protection against cheats like **EtherHack**.
@@ -17,8 +19,10 @@ Next, download the files in this repository. Create a directory on your server's
 Lastly, in order for the anti-cheat to kick players, API needs to exist that isn't in the game by default.
 
 Two server-patches provides this API:
-- [EtherHammerX_Server_Patch (PZ build 41.76.18)](https://cdn.discordapp.com/attachments/1173450487853494423/1358319904809549915/EtherHammerX_Server_Patch_41.78.16.zip?ex=67f3697d&is=67f217fd&hm=19a5f40c6ec2b14e16c9df0ec503ae3b2101a31474b3951ec0e0d03db499a783&) (Only adds needed API)
-- [CraftHammer V1.06_01 (PZ build 41.76.18)](https://cdn.discordapp.com/attachments/1173450487853494423/1173469990754717707/craftboid_41.78.16_v1.06_01.zip?ex=67f34b97&is=67f1fa17&hm=9df6398e0106cb8b26d23fe396624116407c6762d189057ad7dcc442963108de&) (A full server-side anti-cheat)
+- EtherHammerX_Server_Patch (PZ build 41.76.18) (Only adds needed API)
+- CraftHammer V1.06_01 (PZ build 41.76.18) (A full server-side anti-cheat)
+
+[Click here to go to the Discord server for releases](https://discord.gg/vzKTfgJQ5D)
 
 > **Developer's Note**: *CraftHammer* is a full server framework with a built-in packet analyser for hackers trying to manipulate the network to gain access to cheats and exploits in the game. This is also a dated anti-cheat (3+ years old) and could run into some issues. I'd recommend this however if you don't want this on your server I totally understand. That's why I provide the other option only adding the API to kick and ban players.
 

@@ -35,6 +35,8 @@
 --- @class EtherHammerXClientAPI
 local EtherHammerXClientAPI = {};
 
+--- Checks if a ticket with a username and message exists on the server.
+--- 
 --- @param author string
 --- @param message string
 --- @param callback fun(result: boolean): void
@@ -59,7 +61,7 @@ function EtherHammerXClientAPI.disconnect() end
 --- @return boolean result True if the API call to disconnect the player is invoked.
 function EtherHammerXClientAPI.isDisconnected() end
 
---- Reports the anti-cheat to the server.
+--- Reports a cheat to the server.
 ---
 --- @param type string The type of report. (E.G: module, type of hack)
 --- @param reason? string (Optional) Additional information provided by the report.
@@ -86,14 +88,14 @@ function EtherHammerXClientAPI.printGlobalTables(tables) end
 --- @param functions? string[] If not provided, the API will fetch them. If provided, the function will execute way faster.
 function EtherHammerXClientAPI.printGlobalFunctions(functions) end
 
---- Checks if an array has a value stored.
+--- Checks if an array contains a value.
 ---
 --- @param array string[] The array to check.
 --- @param value string The value to check.
 --- @return boolean True if one or more values are in the array.
 function EtherHammerXClientAPI.arrayContains(array, value) end
 
---- Checks if one or more values exists in a list.
+--- Checks if one or more values exists in an array.
 ---
 --- @param list string[] The list to test.
 --- @param match string[] The list to match.

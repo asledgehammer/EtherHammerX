@@ -170,5 +170,15 @@ function API.report(type, reason, disconnect)
     if disconnect then API.disconnect() end
 end
 
+--- Grabs the server's information for the player. This is to make sure that the info is genuine. Cheater clientc can
+--- modify and compromise the client's information on the player being a staff member, etc.
+---
+--- @param callback ServerPlayerInfoCallback The callback that is invoked when the server responds with the player's information
+---
+--- @return void
+function API.getServerPlayerInfo(callback)
+    print('[EtherHammerX] :: Method not implemented: API.getStaffMembers()');
+end
+
 -- Force the table to be read-only. Rogue or maliciously-injected modules won't be able to mutate the API table.
 return API;

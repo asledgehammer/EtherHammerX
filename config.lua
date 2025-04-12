@@ -53,6 +53,7 @@ return {
     --- NOTE: Server-side modules are optional.
     MODULES = {
         etherhack = {
+            enable = true,
             name = 'EtherHack',
             options = {
                 --- @type boolean
@@ -61,10 +62,12 @@ return {
                 SUBMIT_TICKET_ON_KICK = true,
             }
         },
-        -- unlockvizion = {
-        --     name = 'UnlockViZion',
-        --     runOnce = true,
-        --     options = {}
-        -- }
+        generic = {
+            enable = true,
+            name = 'Generic',
+            options = {
+
+            }
+        }
     }
 };

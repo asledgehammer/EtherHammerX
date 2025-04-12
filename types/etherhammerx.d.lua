@@ -36,7 +36,7 @@
 local EtherHammerXClientAPI = {};
 
 --- Checks if a ticket with a username and message exists on the server.
---- 
+---
 --- @param author string
 --- @param message string
 --- @param callback fun(result: boolean): void
@@ -103,6 +103,16 @@ function EtherHammerXClientAPI.arrayContains(array, value) end
 --- @return boolean True if one or more matches.
 function EtherHammerXClientAPI.anyExists(list, match) end
 
+--- Grabs the server's information for the player. This is to make sure that the info is genuine. Cheater clientc can
+--- modify and compromise the client's information on the player being a staff member, etc.
+---
+--- @param callback ServerPlayerInfoCallback The callback that is invoked when the server responds with the player's information
+---
+--- @return void
+function EtherHammerXClientAPI.getServerPlayerInfo(callback) end
+
 --- MARK: Server
 
+--- @alias ServerPlayerInfo { steamID: number, onlineID: number, username: string, accessLevel: string, position: {x: number, y: number, z: number} }
+--- @alias ServerPlayerInfoCallback fun(info: ServerPlayerInfo): void
 --- @alias ServerKeyFragmentCallback fun(config: EtherHammerXConfiguration, player: IsoPlayer): string

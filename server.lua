@@ -208,6 +208,26 @@ if isClient() or not isServer() then return end
                 if reason then message = message .. ' (' .. reason .. ')' end
                 info(username .. ' was kicked for ' .. message);
                 kick(player, username, message);
+            elseif id == { string = 'REQUEST_PLAYER_INFO_COMMAND' } then
+                local username = player:getUsername();
+                --- @type ServerPlayerInfo
+                local pInfo = {
+                    steamID = player:getSteamID(),
+                    onlineID = player:getOnlineID(),
+                    username = username,
+                    accessLevel = player:getAccessLevel(),
+                    position = {
+                        x = player:getX(),
+                        y = player:getY(),
+                        z = player:getZ(),
+                    },
+                };
+                local packet = Packet(
+                    { string = 'MODULE_ID' },
+                    { string = 'REQUEST_PLAYER_INFO_COMMAND' },
+                    pInfo
+                );
+                packet:encryptAndSendToPlayer(playerKeys[username], player);
             end
         end
 
@@ -226,7 +246,8 @@ if isClient() or not isServer() then return end
             packet:decrypt(key, function()
                 -- Make sure that the packet is proper. Anything other can be considered tampering.
                 if not packet.valid then
-                    info('Player ' .. username .. ' sent a bad packet. Disconnecting them from the server..');
+                    info('Player ' ..
+                        username .. ' sent a bad packet. (Failed to decrypt) Disconnecting them from the server..');
                     kick(player, username, 'Sent a bad packet.');
                     return;
                 end

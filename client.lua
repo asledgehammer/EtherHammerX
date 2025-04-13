@@ -98,7 +98,7 @@ if not isClient() or isServer() then return end
                     if module.runOnce and module.code ~= nil then
                         module.code(api, module.options);
                         module.code = nil;
-                    else
+                    elseif not module.runOnce then
                         pcall(function()
                             module.code(api, module.options);
                         end);

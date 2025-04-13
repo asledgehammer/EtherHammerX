@@ -57,7 +57,7 @@ return {
             name = 'EtherHack',
             options = {
                 --- @type boolean
-                --- 
+                ---
                 --- If true, a ticket is submitted to the admins that the player is hacking.
                 SUBMIT_TICKET_ON_KICK = true,
             }
@@ -65,9 +65,8 @@ return {
         generic = {
             enable = true,
             name = 'Generic',
-            options = {
-
-            }
+            runOnce = true,
+            options = {}
         }
     }
 };

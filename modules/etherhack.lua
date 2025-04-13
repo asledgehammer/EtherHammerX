@@ -50,7 +50,6 @@ local etherHackAPIClasses = {
 
 --- @type EtherHammerXClientModule
 local module = function(api, options)
-
     local function classExists()
         local classes = api.getGlobalClasses();
         for _, class in ipairs(classes) do
@@ -65,24 +64,20 @@ local module = function(api, options)
 
     local funcs = api.getGlobalFunctions();
     if api.anyExists(funcs, etherHackFunctions) then
-        print('EtherHack: Injected Function detected.');
-        api.report('EtherHack', 'Injected function', false);
-        if options.SUBMIT_TICKET_ON_KICK then
+        if options.submit_ticket_on_kick then
             api.submitTicket('Hello, I am using EtherHack, detected by EtherHammerX. (Code Injection)', function()
-                api.disconnect();
+                api.report('EtherHack', 'Injected function', 'kick');
             end);
         else
-            api.disconnect();
+            api.report('EtherHack', 'Injected function', 'kick');
         end
     elseif classExists() then
-        print('EtherHack: Injected Class detected.');
-        api.report('EtherHack', 'Injected class', false);
-        if options.SUBMIT_TICKET_ON_KICK then
+        if options.submit_ticket_on_kick then
             api.submitTicket('Hello, I am using EtherHack, detected by EtherHammerX. (Code Injection)', function()
-                api.disconnect();
+                api.report('EtherHack', 'Injected class', 'kick');
             end);
         else
-            api.disconnect();
+            api.report('EtherHack', 'Injected class', 'kick');
         end
     end
 end

@@ -59,14 +59,49 @@ return {
                 --- @type boolean
                 ---
                 --- If true, a ticket is submitted to the admins that the player is hacking.
-                SUBMIT_TICKET_ON_KICK = true,
+                submit_ticket_on_kick = true,
             }
         },
         generic = {
             enable = true,
             name = 'Generic',
             runOnce = true,
-            options = {}
+            options = {
+                --- @type number
+                --- 
+                --- The time it takes to check for cheats. (In tick(s))
+                fast_check_time = 20,
+
+                --- @type number
+                --- 
+                --- The time it takes to get server-side info of the player. (In second(s))
+                info_time = 60,
+                
+                --- @type table<string, 'kick'|'log'|'off'>
+                --- 
+                --- Set these to kick, log, or disable cheat checks.
+                cheats = {
+                    access_level = 'kick',
+                    debug_mode = 'kick',
+                    god_mod = 'kick',
+                    invisible = 'kick',
+                    invincible = 'kick',
+                    ghost_mode = 'kick',
+                    no_clip = 'log',
+                    timed_action_instant = 'kick',
+                    unlimited_carry = 'kick',
+                    unlimited_endurance = 'kick',
+                    build = 'kick',
+                    farming = 'kick',
+                    health = 'kick',
+                    mechanics = 'kick',
+                    movables = 'kick',
+                    can_see_all = 'kick',
+                    can_hear_all = 'kick',
+                    zombies_dont_attack = 'kick',
+                    show_mp_info = 'kick'
+                }
+            }
         }
     }
 };

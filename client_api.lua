@@ -4,9 +4,8 @@
 --- @author asledgehammer, JabDoesThings 2025
 ---]]
 
-local API = {
-    disconnected = false,
-};
+--- @type EtherHammerXClientAPI
+local API = { disconnected = false };
 
 --- @return boolean result True if the API call to disconnect the player is invoked.
 function API.isDisconnected()
@@ -15,8 +14,6 @@ end
 
 --- Only perform the actual kick here. We want to check and see if a ticket exists first with
 --- our message. (This prevents ticket spamming the server)
----
---- @return void
 function API.disconnect()
     API.disconnected = true;
     setGameSpeed(1);
@@ -121,8 +118,6 @@ end
 --- @param author string
 --- @param message string
 --- @param callback fun(result: boolean): void
----
---- @return void
 function API.ticketExists(author, message, callback)
     local __f = function() end
     --- Add and Remove the ticket checker after checking for a pre-existing hack message.
@@ -145,29 +140,29 @@ function API.ticketExists(author, message, callback)
     getTickets(author);
 end
 
---- Submits a hack ticket & kicks the player from the server.
+--- Submits a ticket to the server.
 ---
---- @param message string
---- @param callback fun(): void
----
---- @return void
+--- @param message string The text-body content of the ticket.
+--- @param callback? fun(): void (Optional) Invoked after a ticket is submitted.
 function API.submitTicket(message, callback)
     local player = getPlayer();
     local username = player:getUsername();
     API.ticketExists(username, message, function(exists)
-        if not exists then
-            addTicket(username, message, -1);
-        end
-        callback();
+        if not exists then addTicket(username, message, -1) end
+        if callback and type(callback) == 'function' then callback() end
     end);
 end
 
--- NOTE: Debug or test version. The client code overrides this with the production version.
-function API.report(type, reason, disconnect)
+--- Reports a cheat to the server.
+---
+--- @param type string The type of report. (E.G: module, type of hack)
+--- @param reason string Additional information provided by the report.
+--- @param action ReportAction The action to take.
+function API.report(type, reason, action)
     local message = tostring(type);
     if reason then message = message .. ' (' .. tostring(reason) .. ')' end
     print('[EtherHammerX] :: ' .. message);
-    if disconnect then API.disconnect() end
+    if action == 'kick' then API.disconnect() end
 end
 
 --- Grabs the server's information for the player. This is to make sure that the info is genuine. Cheater clientc can

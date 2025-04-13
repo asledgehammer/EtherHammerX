@@ -31,6 +31,7 @@
 --- @alias EtherHammerXClientModule fun(api: EtherHammerXClientAPI, options: table<string, any>): void
 --- @alias ClientKeyFragmentCallback fun(player: IsoPlayer): string
 --- @alias EtherHammerModule {name: string, code: fun(player: IsoPlayer): boolean, runOnce: boolean}
+--- @alias ReportAction 'kick' | 'log'
 
 --- @class EtherHammerXClientAPI
 local EtherHammerXClientAPI = {};
@@ -40,22 +41,16 @@ local EtherHammerXClientAPI = {};
 --- @param author string
 --- @param message string
 --- @param callback fun(result: boolean): void
----
---- @return void
 function EtherHammerXClientAPI.ticketExists(author, message, callback) end
 
---- Submits a hack ticket & kicks the player from the server.
+--- Submits a ticket to the server.
 ---
---- @param message string
---- @param callback fun(): void
----
---- @return void
+--- @param message string The text-body content of the ticket.
+--- @param callback? fun(): void (Optional) Invoked after a ticket is submitted.
 function EtherHammerXClientAPI.submitTicket(message, callback) end
 
 --- Only perform the actual kick here. We want to check and see if a ticket exists first with
 --- our message. (This prevents ticket spamming the server)
----
---- @return void
 function EtherHammerXClientAPI.disconnect() end
 
 --- @return boolean result True if the API call to disconnect the player is invoked.
@@ -64,11 +59,9 @@ function EtherHammerXClientAPI.isDisconnected() end
 --- Reports a cheat to the server.
 ---
 --- @param type string The type of report. (E.G: module, type of hack)
---- @param reason? string (Optional) Additional information provided by the report.
---- @param disconnect? boolean (Optional) If true, the client will disconnect itself. If other actions are desired prior to this call, do not set this to true.
----
---- @return void
-function EtherHammerXClientAPI.report(type, reason, disconnect) end
+--- @param reason string Additional information provided by the report.
+--- @param action ReportAction The action to take.
+function EtherHammerXClientAPI.report(type, reason, action) end
 
 --- @return {globalName: string, typeName: string}[] ClassNames The first string is the `_G[ID]`. The second string is the `class.Type` value.
 function EtherHammerXClientAPI.getGlobalClasses() end
@@ -92,6 +85,7 @@ function EtherHammerXClientAPI.printGlobalFunctions(functions) end
 ---
 --- @param array string[] The array to check.
 --- @param value string The value to check.
+--- 
 --- @return boolean True if one or more values are in the array.
 function EtherHammerXClientAPI.arrayContains(array, value) end
 
@@ -107,8 +101,6 @@ function EtherHammerXClientAPI.anyExists(list, match) end
 --- modify and compromise the client's information on the player being a staff member, etc.
 ---
 --- @param callback ServerPlayerInfoCallback The callback that is invoked when the server responds with the player's information
----
---- @return void
 function EtherHammerXClientAPI.getServerPlayerInfo(callback) end
 
 --- MARK: Server

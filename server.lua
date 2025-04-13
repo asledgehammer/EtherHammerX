@@ -7,6 +7,8 @@
 local Packet = require 'asledgehammer/network/Packet';
 local PlayerListener = require 'asledgehammer/network/PlayerListener';
 
+local delaySeconds = (require 'asledgehammer/util/TimeUtils').delaySeconds;
+
 -- (Only run on server-side of a multiplayer session)
 if isClient() or not isServer() then return end
 
@@ -132,10 +134,15 @@ if isClient() or not isServer() then return end
         --- @return void
         local function processLogout(username)
             -- Dispose of status & request times.
-            playerStatuses[username] = nil;
-            playerRequestLast[username] = nil;
-            playerKeys[username] = nil;
-            playerFuncs[username] = nil;
+            --
+            -- NOTE: Delay the disposal for 10 second(s) to allow for laggy players and post-kick  packets from modules
+            -- to receive.
+            delaySeconds(function()
+                playerStatuses[username] = nil;
+                playerRequestLast[username] = nil;
+                playerKeys[username] = nil;
+                playerFuncs[username] = nil;
+            end, 10);
         end
 
         --- (Generic kick-player function)
@@ -168,7 +175,9 @@ if isClient() or not isServer() then return end
 
                 local key = playerKeys[username];
                 if data.key ~= key then
-                    kick(player, username, 'Client key mismatch.');
+                    kick(player, username,
+                    'Client key mismatch. (client: "' ..
+                        tostring(data.key) .. '", server: "' .. tostring(key) .. '")');
                     return;
                 end
 
@@ -202,12 +211,17 @@ if isClient() or not isServer() then return end
             elseif id == { string = 'REPORT_COMMAND' } then
                 -- The initial handshake request requires a known key. Use the initially-generated key here.
                 local username = player:getUsername();
-                local type = data.type;
-                local reason = data.reason;
-                local message = type;
-                if reason then message = message .. ' (' .. reason .. ')' end
-                info(username .. ' was kicked for ' .. message);
-                kick(player, username, message);
+                --- @type string, string, ReportAction
+                local message, reason, action = data.type, data.reason, data.action or 'kick';
+                if action == 'log' then
+                    if reason then message = message .. ' (' .. reason .. ')' end
+                    info(username .. ' was logged for ' .. message);
+                    log(message);
+                elseif action == 'kick' then
+                    if reason then message = message .. ' (' .. reason .. ')' end
+                    info(username .. ' was kicked for ' .. message);
+                    kick(player, username, message);
+                end
             elseif id == { string = 'REQUEST_PLAYER_INFO_COMMAND' } then
                 local username = player:getUsername();
                 --- @type ServerPlayerInfo

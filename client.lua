@@ -8,13 +8,17 @@ local Packet = require 'asledgehammer/network/Packet';
 
 --- @type fun(table: table): table
 local readonly = require 'asledgehammer/util/readonly';
---- @type fun(ticks: number, callback: fun(): void)
-local delay = (require 'asledgehammer/util/ZedUtils').delay;
+
+local delayTicks = (require 'asledgehammer/util/TimeUtils').delayTicks;
 
 -- (Only run if client-side of a multiplayer session)
 if not isClient() or isServer() then return end
 
 (function()
+    --- @type ServerPlayerInfoCallback[]
+    local playerInfoCallbacks = {};
+    local playerInfoRequested = false;
+
     --- Dynamically loaded and fed from `keys.lua`.
     ---
     --- @type fun(player: IsoPlayer): string
@@ -26,28 +30,35 @@ if not isClient() or isServer() then return end
     --- @type {name: string, code: string, runOnce: boolean, options: table}[]
     local modules = { raw = 'MODULES' };
 
+    -- Protect module options arguments from tampering.
+    for _, module in pairs(modules) do
+        module.options = readonly(module.options);
+    end
+
     -- This is the initial key to perform the handshake.
     local HANDSHAKE_KEY = { string = 'HANDSHAKE_KEY' };
     local key = HANDSHAKE_KEY;
 
+    --- @type EtherHammerXClientAPI
     local api = { table = "CLIENT_API" };
 
+    --- Float our own variable locally to prevent sending post-kick packets.
+    local disconnected = false;
+
     -- NOTE: Override the test-code with the production-code for reports.
-    function api.report(type, reason, disconnect)
+    function api.report(type, reason, action)
         local message = type;
         if reason then message = message .. ' (' .. reason .. ')' end
-        local packet = Packet(MODULE_ID, { string = 'REPORT_COMMAND' }, { type = type, reason = reason });
+        local packet = Packet(MODULE_ID, { string = 'REPORT_COMMAND' }, { type = type, reason = reason, action = action });
         packet:encrypt(key, function()
             packet:sendToServer();
-            if disconnect then
-                delay(60, function() api.disconnect() end);
+            -- Fallback for non-patched server AND compromised lua-network.
+            if action == 'kick' then
+                disconnected = true;
+                delayTicks(function() api.disconnect() end, 60);
             end
         end);
     end
-
-    --- @type ServerPlayerInfoCallback[]
-    local playerInfoCallbacks = {};
-    local playerInfoRequested = false;
 
     --- Grabs the server's information for the player. This is to make sure that the info is genuine. Cheater clients can
     --- modify and compromise the client's information on the player being a staff member, etc.
@@ -81,7 +92,8 @@ if not isClient() or isServer() then return end
             -- Make sure that the packet is proper. Anything other can be considered tampering.
             if not packet.valid then
                 print('[EtherHammerX] :: Bad or malformed packet. Disconnecting from server..');
-                disconnect();
+                api.disconnect();
+                disconnected = true;
                 return;
             end
 
@@ -106,7 +118,7 @@ if not isClient() or isServer() then return end
                 end
 
                 -- (No need to do anything else if disconnected)
-                if api.isDisconnected() then return end
+                if disconnected or api.isDisconnected() then return end
 
                 packet = Packet(MODULE_ID, { string = 'HEARTBEAT_RESPONSE_COMMAND' }, {
                     key = key,

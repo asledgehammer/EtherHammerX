@@ -11,27 +11,27 @@ return {
     --- The time (in second(s)) that the client must respond at the time on login.
     ---
     --- @type number
-    TIME_TO_GREET = 10,
+    time_to_greet = 10,
 
     --- The time (in second(s)) that the client must respond after a request is sent post-greeting.
     ---
     --- @type number
-    TIME_TO_VERIFY = 120,
+    time_to_verify = 120,
 
     --- If true, players are pinged for a new key and verification is done.
     ---
     --- @type boolean
-    SHOULD_HEARTBEAT = true,
+    should_heartbeat = true,
 
     --- The time (in second(s)) that the client must respond (At the time of request) periodically.
     ---
     --- @type number
-    TIME_TO_HEARTBEAT = 20,
+    time_to_heartbeat = 20,
 
     --- The time (in second(s)) that the player-manager updates.
     ---
     --- @type number
-    TIME_TO_TICK = 5,
+    time_to_kick = 5,
 
     --- The key-generation profile to use. All server and client key fragments are calculated and audited using these functions.
     ---
@@ -43,7 +43,13 @@ return {
     --- consistent if ran on both the client and server, otherwise the audit will fail.
     ---
     --- @type string
-    KEY = 'basic',
+    key = 'basic',
+
+    --- Set to 'log' to only log these events. Don't change this unless you know what it does.
+    --- NOTE: Setting this to 'log' can compromise the safety of the anti-cheat.
+    ---
+    --- @type 'log'|'kick'
+    bad_packet_action = 'kick',
 
     --- All modules to check for anti-cheats are defined here.
     ---
@@ -51,7 +57,7 @@ return {
     --- - `modules/<MODULE_ID>.lua`
     ---
     --- NOTE: Server-side modules are optional.
-    MODULES = {
+    modules = {
         etherhack = {
             enable = true,
             name = 'EtherHack',
@@ -67,19 +73,19 @@ return {
             name = 'Generic',
             runOnce = true,
             options = {
-                --- @type number
-                --- 
                 --- The time it takes to check for cheats. (In tick(s))
+                --- 
+                --- @type number
                 fast_check_time = 20,
 
-                --- @type number
-                --- 
                 --- The time it takes to get server-side info of the player. (In second(s))
+                --- 
+                --- @type number
                 info_time = 60,
                 
-                --- @type table<string, 'kick'|'log'|'off'>
-                --- 
                 --- Set these to kick, log, or disable cheat checks.
+                --- 
+                --- @type table<string, 'kick'|'log'|'off'>
                 cheats = {
                     access_level = 'kick',
                     debug_mode = 'kick',

@@ -4,18 +4,23 @@
 --- @author asledgehammer, JabDoesThings 2025
 ---]]
 
-local LuaNetwork = require 'asledgehammer/network/LuaNetworkEvents';
-local Packet = require 'asledgehammer/network/Packet';
-
 --- @type fun(table: table): table
 local readonly = require 'asledgehammer/util/readonly';
-
+--- @type fun(callback: fun(), ticks: number)
 local delayTicks = (require 'asledgehammer/util/TimeUtils').delayTicks;
+--- @type fun(callback: fun(module: string, command: string, args: table | nil))
+local addServerListener = (require 'asledgehammer/network/LuaNetworkEvents').addServerListener;
+local Packet = require 'asledgehammer/network/Packet';
 
 -- (Only run if client-side of a multiplayer session)
 if not isClient() or isServer() then return end
 
 (function()
+    --- @param message any
+    local function info(message)
+        print('[EtherHammerX] :: ' .. tostring(message));
+    end
+
     --- @type ServerPlayerInfoCallback[]
     local playerInfoCallbacks = {};
     local playerInfoRequested = false;
@@ -23,13 +28,13 @@ if not isClient() or isServer() then return end
     --- Dynamically loaded and fed from `keys.lua`.
     ---
     --- @type fun(player: IsoPlayer): string
-    local clientKey = { func = 'CLIENT_KEY_FUNCTION' };
+    local clientKey = { func = 'client_key_function' };
 
     -- The packet-module identity.
-    local MODULE_ID = { string = 'MODULE_ID' };
+    local MODULE_ID = { string = 'module_id' };
 
     --- @type {name: string, code: string, runOnce: boolean, options: table}[]
-    local modules = { raw = 'MODULES' };
+    local modules = { raw = 'modules' };
 
     -- Protect module options arguments from tampering.
     for _, module in pairs(modules) do
@@ -37,11 +42,11 @@ if not isClient() or isServer() then return end
     end
 
     -- This is the initial key to perform the handshake.
-    local HANDSHAKE_KEY = { string = 'HANDSHAKE_KEY' };
+    local HANDSHAKE_KEY = { string = 'handshake_key' };
     local key = HANDSHAKE_KEY;
 
     --- @type EtherHammerXClientAPI
-    local api = { table = "CLIENT_API" };
+    local api = { table = 'client_api' };
 
     --- Float our own variable locally to prevent sending post-kick packets.
     local disconnected = false;
@@ -50,7 +55,7 @@ if not isClient() or isServer() then return end
     function api.report(type, reason, action)
         local message = type;
         if reason then message = message .. ' (' .. reason .. ')' end
-        local packet = Packet(MODULE_ID, { string = 'REPORT_COMMAND' }, { type = type, reason = reason, action = action });
+        local packet = Packet(MODULE_ID, { string = 'report_command' }, { type = type, reason = reason, action = action });
         packet:encrypt(key, function()
             packet:sendToServer();
             -- Fallback for non-patched server AND compromised lua-network.
@@ -75,7 +80,7 @@ if not isClient() or isServer() then return end
         table.insert(playerInfoCallbacks, callback);
 
         if not playerInfoRequested then
-            local packet = Packet(MODULE_ID, { string = 'REQUEST_PLAYER_INFO_COMMAND' }, {});
+            local packet = Packet(MODULE_ID, { string = 'request_player_info_command' }, {});
             packet:encryptAndSendToServer(key);
             playerInfoRequested = true;
         end
@@ -84,7 +89,7 @@ if not isClient() or isServer() then return end
     -- Force the table to be read-only. Rogue or maliciously-injected modules won't be able to mutate the API table.
     api = readonly(api);
 
-    LuaNetwork.addServerListener(function(packet_module, command, args)
+    addServerListener(function(packet_module, command, args)
         -- Ignore everything else.
         if packet_module ~= MODULE_ID then return end
 
@@ -92,13 +97,13 @@ if not isClient() or isServer() then return end
         packet:decrypt(key, function()
             -- Make sure that the packet is proper. Anything other can be considered tampering.
             if not packet.valid then
-                print('[EtherHammerX] :: Bad or malformed packet. Disconnecting from server..');
+                info('Bad or malformed packet. Disconnecting from server..');
                 api.disconnect();
                 disconnected = true;
                 return;
             end
 
-            if packet.command == { string = 'HEARTBEAT_REQUEST_COMMAND' } then
+            if packet.command == { string = 'heartbeat_request_command' } then
                 -- Generate the expected client-key fragment.
                 local serverFragment = packet.data.message;
                 local clientFragment = clientKey(getPlayer());
@@ -121,12 +126,12 @@ if not isClient() or isServer() then return end
                 -- (No need to do anything else if disconnected)
                 if disconnected or api.isDisconnected() then return end
 
-                packet = Packet(MODULE_ID, { string = 'HEARTBEAT_RESPONSE_COMMAND' }, {
+                packet = Packet(MODULE_ID, { string = 'heartbeat_response_command' }, {
                     key = key,
                     message = clientFragment
                 });
                 packet:encryptAndSendToServer(key);
-            elseif packet.command == { string = "REQUEST_PLAYER_INFO_COMMAND" } then
+            elseif packet.command == { string = 'request_player_info_command' } then
                 playerInfoRequested = false;
                 for _, callback in ipairs(playerInfoCallbacks) do
                     callback(packet.data);
@@ -136,9 +141,9 @@ if not isClient() or isServer() then return end
         end);
     end);
 
-    print('[EtherHammerX] :: INIT CLIENT.');
+    info('INIT');
 
     -- Initialize formal request for first handshake.
-    local packet = Packet(MODULE_ID, { string = 'HANDSHAKE_REQUEST_COMMAND' });
-    packet:encryptAndSendToServer({ string = 'HANDSHAKE_KEY' });
+    local packet = Packet(MODULE_ID, { string = 'handshake_request_command' });
+    packet:encryptAndSendToServer({ string = 'handshake_key' });
 end)();

@@ -4,11 +4,16 @@
 --- @author asledgehammer, JabDoesThings 2025
 ---]]
 
-local LuaNetwork = require 'asledgehammer/network/LuaNetworkEvents';
+
+--- @type fun(callback: fun(module: string, command: string, player: IsoPlayer, args: table | nil))
+local addClientListener = (require 'asledgehammer/network/LuaNetworkEvents').addClientListener;
+--- @type fun(callback: fun(), seconds: number)
+local delaySeconds = (require 'asledgehammer/util/TimeUtils').delaySeconds;
 local Packet = require 'asledgehammer/network/Packet';
 local PlayerListener = require 'asledgehammer/network/PlayerListener';
 
-local delaySeconds = (require 'asledgehammer/util/TimeUtils').delaySeconds;
+local TimeUtils = require 'asledgehammer/util/TimeUtils';
+
 
 -- (Only run on server-side of a multiplayer session)
 if isClient() or not isServer() then return end
@@ -17,37 +22,15 @@ if isClient() or not isServer() then return end
     local info = function(message)
         print('[EtherHammerX] :: ' .. tostring(message));
     end
-
-    local pad2 = function(str)
-        if #str == 1 then return '0' .. str end
-        return str;
-    end
-
-    --- Converts a millisecond UNIX timestamp to a human-readable ISO-8601 formatted date string.
-    --- @param time number The time in milliseconds. (use `getTimeInMillis()`)
-    ---
-    --- @return string date The formatted date as a string.
-    local toISO8601 = function(time)
-        local d = os.date("*t", Math.floor(time / 1000));
-        local year = tostring(d.year);
-        local month = pad2(tostring(d.month));
-        local day = pad2(tostring(d.day));
-        local hour = pad2(tostring(d.hour));
-        local min = pad2(tostring(d.min));
-        local sec = pad2(tostring(d.sec));
-        local msec = tostring(time);
-        msec = string.sub(msec, #msec - 3);
-        return year .. '-' .. month .. '-' .. day .. 'T' .. hour .. ':' .. min .. ':' .. sec .. '.' .. msec .. 'Z';
-    end
-
+    --- @param message any
     local log = function(message)
         local writer = getFileWriter('ModLoader/mods/EtherHammerX/reports.log', true, true);
-        writer:writeln('[' .. toISO8601(getTimeInMillis()) .. '] :: ' .. message);
+        writer:writeln('[' .. TimeUtils.toISO8601(getTimeInMillis()) .. '] :: ' .. tostring(message));
         writer:close();
     end
 
     -- The packet-module identity.
-    local MODULE_ID = { string = 'MODULE_ID' };
+    local MODULE_ID = { string = 'module_id' };
 
     --- (Login statuses)
     local STATUS_AWAIT_HEARTBEAT_REQUEST = 1;
@@ -73,14 +56,14 @@ if isClient() or not isServer() then return end
     end
 
     local function run()
-        -- - @type table<string, boolean>
-        -- local verifiedOnce = {};
-
         --- @type table<string, number>
         local playerStatuses = {};
 
         --- @type table<string, string>
         local playerKeys = {};
+
+        --- @type table<string, string>
+        local playerKeysOld = {};
 
         --- @type table,string, fun(player:IsoPlayer):string>
         local playerFuncs = {};
@@ -94,7 +77,7 @@ if isClient() or not isServer() then return end
         --- Dynamically loaded and fed from `keys.lua`.
         ---
         --- @type fun(player: IsoPlayer): string
-        local serverKey = { func = 'SERVER_KEY_FUNCTION' };
+        local serverKey = { func = 'server_key_function' };
 
         --- Sends a followup request to cycle the key, requesting for the current key as well.
         ---
@@ -109,18 +92,18 @@ if isClient() or not isServer() then return end
             playerRequestLast[username] = getTimeInMillis();
 
             if not playerFuncs[username] then
-                playerFuncs[username] = { func = 'CLIENT_KEY_FUNCTION' };
+                playerFuncs[username] = { func = 'client_key_function' };
             end
 
             -- Generate the next server key-fragment for the player.
             local serverFragment = serverKey(player);
             serverFragments[username] = serverFragment;
 
-            local oldKey = playerKeys[username];
+            playerKeysOld[username] = playerKeys[username];
             playerKeys[username] = serverFragments[username] .. playerFuncs[username](player);
 
-            local packet = Packet(MODULE_ID, { string = 'HEARTBEAT_REQUEST_COMMAND' }, { message = serverFragment });
-            packet:encrypt(oldKey, function()
+            local packet = Packet(MODULE_ID, { string = 'heartbeat_request_command' }, { message = serverFragment });
+            packet:encrypt(playerKeysOld[username], function()
                 packet:sendToPlayer(player);
                 -- Restart the timer after encrypting the packet and sending it.
                 playerStatuses[username] = STATUS_AWAIT_HEARTBEAT_REQUEST_RECEIVE;
@@ -142,6 +125,7 @@ if isClient() or not isServer() then return end
                 playerStatuses[username] = nil;
                 playerRequestLast[username] = nil;
                 playerKeys[username] = nil;
+                playerKeysOld[username] = nil;
                 playerFuncs[username] = nil;
             end, 10);
         end
@@ -171,7 +155,7 @@ if isClient() or not isServer() then return end
         ---
         --- @return void
         local function onReceivePacket(player, id, data)
-            if id == { string = 'HEARTBEAT_RESPONSE_COMMAND' } then
+            if id == { string = 'heartbeat_response_command' } then
                 local username = player:getUsername();
 
                 local key = playerKeys[username];
@@ -189,18 +173,18 @@ if isClient() or not isServer() then return end
                 -- info('Player \'' .. tostring(username) .. '\' verified.');
                 -- verifiedOnce[username] = true;
                 -- end
-            elseif id == { string = 'HANDSHAKE_REQUEST_COMMAND' } then
+            elseif id == { string = 'handshake_request_command' } then
                 -- The initial handshake request requires a known key. Use the initially-generated key here.
                 local username = player:getUsername();
                 local serverKeyFragment = serverKey(player);
 
                 if not playerFuncs[username] then
-                    playerFuncs[username] = { func = 'CLIENT_KEY_FUNCTION' };
+                    playerFuncs[username] = { func = 'client_key_function' };
                 end
 
-                local packet = Packet(MODULE_ID, { string = 'HEARTBEAT_REQUEST_COMMAND' },
+                local packet = Packet(MODULE_ID, { string = 'heartbeat_request_command' },
                     { message = serverKeyFragment });
-                packet:encrypt({ string = 'HANDSHAKE_KEY' }, function()
+                packet:encrypt({ string = 'handshake_key' }, function()
                     packet:sendToPlayer(player);
                     -- Start the timer only after encrypting the packet and sending it.
                     playerStatuses[username] = STATUS_AWAIT_HEARTBEAT_REQUEST_RECEIVE;
@@ -209,7 +193,7 @@ if isClient() or not isServer() then return end
 
                 -- The expected response should be in the new key.
                 playerKeys[username] = serverKeyFragment .. playerFuncs[username](player);
-            elseif id == { string = 'REPORT_COMMAND' } then
+            elseif id == { string = 'report_command' } then
                 -- The initial handshake request requires a known key. Use the initially-generated key here.
                 local username = player:getUsername();
                 --- @type string, string, ReportAction
@@ -223,7 +207,7 @@ if isClient() or not isServer() then return end
                     info(username .. ' was kicked for ' .. message);
                     kick(player, username, message);
                 end
-            elseif id == { string = 'REQUEST_PLAYER_INFO_COMMAND' } then
+            elseif id == { string = 'request_player_info_command' } then
                 local username = player:getUsername();
                 --- @type ServerPlayerInfo
                 local pInfo = {
@@ -238,38 +222,54 @@ if isClient() or not isServer() then return end
                     },
                 };
                 local packet = Packet(
-                    { string = 'MODULE_ID' },
-                    { string = 'REQUEST_PLAYER_INFO_COMMAND' },
+                    { string = 'module_id' },
+                    { string = 'request_player_info_command' },
                     pInfo
                 );
                 packet:encryptAndSendToPlayer(playerKeys[username], player);
             end
         end
 
-        LuaNetwork.addClientListener(function(module, command, player, args)
+        addClientListener(function(module, command, player, args)
             if module ~= MODULE_ID then return end
 
             local username = player:getUsername();
             local packet = Packet(module, command, args);
 
             local key = playerKeys[username];
+
             if not key then
-                playerKeys[username] = { string = 'HANDSHAKE_KEY' };
+                playerKeys[username] = { string = 'handshake_key' };
+                playerKeysOld[username] = playerKeys[username];
                 key = playerKeys[username];
             end
 
             packet:decrypt(key, function()
                 -- Make sure that the packet is proper. Anything other can be considered tampering.
                 if not packet.valid then
-                    info('Player ' ..
-                        username .. ' sent a bad packet. (Failed to decrypt) Disconnecting them from the server..');
-                    kick(player, username, 'Sent a bad packet.');
+                    -- Check the older key. (Async API calls)
+                    key = playerKeysOld[username];
+                    packet:decrypt(key, function()
+                        if not packet.valid then
+                            if { string = 'bad_packet_action' } == 'kick' then
+                                local message = 'Player ' .. username .. ' sent a bad packet. (Failed to decrypt).';
+                                info(message);
+                                kick(player, username, 'Sent a bad packet.');
+                            else
+                                local message = 'Player ' .. username .. ' sent a bad packet. (Failed to decrypt).';
+                                info(message);
+                                log(message);
+                            end
+                            return;
+                        end
+                        onReceivePacket(player, packet.command, packet.data);
+                    end);
                     return;
                 end
                 onReceivePacket(player, packet.command, packet.data);
             end);
         end);
-
+        Events.OnServerPlayerLogin.Add(function() end);
         Events.OnServerPlayerLogin.Add(
         --- @param player IsoPlayer
         ---
@@ -278,7 +278,8 @@ if isClient() or not isServer() then return end
                 local username = player:getUsername();
                 if playerStatuses[username] == nil then
                     playerStatuses[username] = STATUS_AWAIT_HEARTBEAT_REQUEST;
-                    playerKeys[username] = { string = 'HANDSHAKE_KEY' };
+                    playerKeys[username] = { string = 'handshake_key' };
+                    playerKeysOld[username] = playerKeys[username];
                     playerRequestLast[username] = getTimeInMillis();
                     info('Player \'' .. tostring(username) .. '\' joined the game.');
                 end
@@ -303,24 +304,24 @@ if isClient() or not isServer() then return end
             tickTimeNow = getTimeInMillis();
 
             -- Only run once every TIME_TO_TICK second(s).
-            if tickTimeNow - tickTimeLast < { number = 'TIME_TO_TICK' } * 1000 then return end
+            if tickTimeNow - tickTimeLast < { number = 'time_to_tick' } * 1000 then return end
             tickTimeLast = tickTimeNow;
 
             -- Update player statuses and request heartbeats.
             for username, player in pairs(PlayerListener.players) do
                 local status = playerStatuses[username];
                 if status == STATUS_AWAIT_HEARTBEAT_REQUEST then -- The player logged in and is ready to receive the first heartbeat.
-                    if getTimeInMillis() - playerRequestLast[username] > { number = 'TIME_TO_GREET' } * 1000 then
+                    if getTimeInMillis() - playerRequestLast[username] > { number = 'time_to_greet' } * 1000 then
                         kick(player, username, 'Verification timeout. (No response #1)');
                         return;
                     end
                 elseif status == STATUS_AWAIT_HEARTBEAT_REQUEST_RECEIVE then -- Waiting on a response.
-                    if getTimeInMillis() - playerRequestLast[username] > { number = 'TIME_TO_GREET' } * 1000 then
+                    if getTimeInMillis() - playerRequestLast[username] > { number = 'time_to_greet' } * 1000 then
                         kick(player, username, 'Verification timeout. (No response #2)');
                         return;
                     end
-                elseif { boolean = "SHOULD_HEARTBEAT" } and status == STATUS_VERIFIED then -- Is verified and heartbeats are periodically requested.
-                    if getTimeInMillis() - playerRequestLast[username] > { number = 'TIME_TO_HEARTBEAT' } * 1000 then
+                elseif { boolean = "should_heartbeat" } and status == STATUS_VERIFIED then -- Is verified and heartbeats are periodically requested.
+                    if getTimeInMillis() - playerRequestLast[username] > { number = 'time_to_heartbeat' } * 1000 then
                         requestHeartbeat(player, username);
                     end
                 end

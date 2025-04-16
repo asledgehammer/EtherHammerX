@@ -42,7 +42,7 @@ local function runFast(api)
     ---
     --- The active cheats to report.
     local active_cheats = {};
-    
+
     --- @type ReportAction
     local most_severe_action = 'log';
 
@@ -95,7 +95,8 @@ local function runFast(api)
             if player:isUnlimitedCarry() then
                 table.insert(active_cheats, 'unlimited-carry');
                 checkSeverity(cheats.unlimited_carry);
-            else
+            -- Dead players have no inventory and show as zero. Don't check if dead.
+            elseif not player:isDead() then
                 local result = checkCapacityWeight(player);
                 if result ~= nil then
                     table.insert(active_cheats, result);

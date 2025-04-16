@@ -4,6 +4,7 @@
 --- @author asledgehammer, JabDoesThings 2025
 ---]]
 
+local LuaNetwork = require 'asledgehammer/network/LuaNetworkEvents';
 local Packet = require 'asledgehammer/network/Packet';
 
 --- @type fun(table: table): table
@@ -83,7 +84,7 @@ if not isClient() or isServer() then return end
     -- Force the table to be read-only. Rogue or maliciously-injected modules won't be able to mutate the API table.
     api = readonly(api);
 
-    Events.OnServerCommand.Add(function(packet_module, command, args)
+    LuaNetwork.addServerListener(function(packet_module, command, args)
         -- Ignore everything else.
         if packet_module ~= MODULE_ID then return end
 
@@ -127,13 +128,15 @@ if not isClient() or isServer() then return end
                 packet:encryptAndSendToServer(key);
             elseif packet.command == { string = "REQUEST_PLAYER_INFO_COMMAND" } then
                 playerInfoRequested = false;
-                for _, info in ipairs(playerInfoCallbacks) do
-                    info(packet.data);
+                for _, callback in ipairs(playerInfoCallbacks) do
+                    callback(packet.data);
                 end
                 playerInfoCallbacks = {};
             end
         end);
     end);
+
+    print('[EtherHammerX] :: INIT CLIENT.');
 
     -- Initialize formal request for first handshake.
     local packet = Packet(MODULE_ID, { string = 'HANDSHAKE_REQUEST_COMMAND' });

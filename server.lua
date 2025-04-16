@@ -4,6 +4,7 @@
 --- @author asledgehammer, JabDoesThings 2025
 ---]]
 
+local LuaNetwork = require 'asledgehammer/network/LuaNetworkEvents';
 local Packet = require 'asledgehammer/network/Packet';
 local PlayerListener = require 'asledgehammer/network/PlayerListener';
 
@@ -176,7 +177,7 @@ if isClient() or not isServer() then return end
                 local key = playerKeys[username];
                 if data.key ~= key then
                     kick(player, username,
-                    'Client key mismatch. (client: "' ..
+                        'Client key mismatch. (client: "' ..
                         tostring(data.key) .. '", server: "' .. tostring(key) .. '")');
                     return;
                 end
@@ -245,7 +246,7 @@ if isClient() or not isServer() then return end
             end
         end
 
-        Events.OnClientCommand.Add(function(module, command, player, args)
+        LuaNetwork.addClientListener(function(module, command, player, args)
             if module ~= MODULE_ID then return end
 
             local username = player:getUsername();
@@ -283,6 +284,7 @@ if isClient() or not isServer() then return end
                 end
             end
         );
+        Events.OnServerPlayerLogout.Add(function() end);
         Events.OnServerPlayerLogout.Add(
         --- @param player IsoPlayer
         ---
@@ -296,6 +298,7 @@ if isClient() or not isServer() then return end
 
         --- @type number, number
         local tickTimeLast, tickTimeNow = -1, -1;
+        Events.OnTickEvenPaused.Add(function() end);
         Events.OnTickEvenPaused.Add(function()
             tickTimeNow = getTimeInMillis();
 
@@ -324,6 +327,6 @@ if isClient() or not isServer() then return end
             end
         end);
     end
-
+    Events.OnServerStarted.Add(function() end);
     Events.OnServerStarted.Add(run);
 end)();

@@ -98,7 +98,7 @@ return {
                     movables = 'kick',
                     can_see_all = 'kick',
                     can_hear_all = 'kick',
-                    zombies_dont_attack = 'kick',
+                    zombies_dont_attack = 'log',
                     show_mp_info = 'kick'
                 }
             }

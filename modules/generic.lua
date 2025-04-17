@@ -6,18 +6,6 @@ local info;
 --- @type table<string, 'kick' | 'log' | 'off'>
 local cheats;
 
---- @param player IsoPlayer
----
---- @return string | nil
-local function checkCapacityWeight(player)
-    local inventory = player:getInventory();
-    local capacityWeight = inventory:getCapacityWeight();
-    print('capacityWeight1: ', capacityWeight);
-    if capacityWeight == 0 then
-        return 'Unlimited Capacity. (weight is 0)';
-    end
-end
-
 --- @param api EtherHammerXClientAPI
 local function runSlow(api)
     api.getServerPlayerInfo(function(_info)
@@ -93,21 +81,9 @@ local function runFast(api)
             checkSeverity(cheats.timed_action_instant);
         end
 
-        if cheats.unlimited_carry ~= 'off' then
-            if player:isUnlimitedCarry() then
-                table.insert(active_cheats, 'unlimited-carry');
-                checkSeverity(cheats.unlimited_carry);
-            -- Dead players have no inventory and show as zero. Don't check if dead.
-            else
-                if not player:isDead() then
-                    local result = checkCapacityWeight(player);
-                    print('capcity-weight: ', result);
-                    if result ~= nil then
-                        table.insert(active_cheats, result);
-                        checkSeverity(cheats.unlimited_carry);
-                    end
-                end
-            end
+        if cheats.unlimited_carry ~= 'off' and player:isUnlimitedCarry() then
+            table.insert(active_cheats, 'unlimited-carry');
+            checkSeverity(cheats.unlimited_carry);
         end
 
         if cheats.unlimited_endurance ~= 'off' and player:isUnlimitedEndurance() then

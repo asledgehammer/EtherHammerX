@@ -4,31 +4,35 @@
 --- @author asledgehammer, JabDoesThings 2025
 ---]]
 
-
 --- @type fun(callback: fun(module: string, command: string, player: IsoPlayer, args: table | nil))
 local addClientListener = (require 'asledgehammer/network/LuaNetworkEvents').addClientListener;
 --- @type fun(callback: fun(), seconds: number)
-local delaySeconds = (require 'asledgehammer/util/TimeUtils').delaySeconds;
 local Packet = require 'asledgehammer/network/Packet';
 local PlayerListener = require 'asledgehammer/network/PlayerListener';
-
 local TimeUtils = require 'asledgehammer/util/TimeUtils';
-
+local ANSIPrinter = require 'asledgehammer/util/ANSIPrinter';
 
 -- (Only run on server-side of a multiplayer session)
 if isClient() or not isServer() then return end
 
-(function()
-    local info = function(message)
-        print('[EtherHammerX] :: ' .. tostring(message));
-    end
-    --- @param message any
-    local log = function(message)
-        local writer = getFileWriter('ModLoader/mods/EtherHammerX/reports.log', true, true);
-        writer:writeln('[' .. TimeUtils.toISO8601(getTimeInMillis()) .. '] :: ' .. tostring(message));
-        writer:close();
-    end
+local isFatal = false;
 
+local mod = 'EtherHammerX';
+local printer = ANSIPrinter:new(mod, { boolean = 'ansi'});
+local info = function(message, ...) printer:info(message, ...) end
+local success = function(message, ...) printer:success(message, ...) end
+local warn = function(message, ...) printer:warn(message, ...) end
+local error = function(message, ...) printer:error(message, ...) end
+local fatal = function(message, ...)
+    isFatal = true;
+    printer:fatal(message, ...);
+end
+
+local function printFatalMessage()
+    fatal('%s failed to load. It is not running..', mod);
+end
+
+(function()
     -- The packet-module identity.
     local MODULE_ID = { string = 'module_id' };
 
@@ -42,15 +46,14 @@ if isClient() or not isServer() then return end
     --- @type fun(player: IsoPlayer, reason?: string): void
     local kickPlayerFromServer = kickPlayerFromServer; -- (Exposed CraftHammer API)
     if kickPlayerFromServer == nil then
-        info(
-            '!!! WARNING: CraftHammer isn\'t installed on the server! ' ..
-            'Kicking players from server-side is disabled. !!!'
+        warn(
+            'The EtherHammerX Java Server Patch isn\'t installed on the server! Kicking players from server-side is disabled.'
         );
-        info('To install CraftHammer, follow this link and grab the latest version here: https://discord.gg/r6PeSFuJDU');
+        warn('To install the patch, follow this link and grab the latest version here: https://discord.gg/r6PeSFuJDU');
         kickPlayerFromServer = function(player)
-            info(
-                '!!! WARNING: CraftHammer isn\'t installed on the server! ' ..
-                'Kicking players from server-side is disabled. (Cannot kick player "' .. player:getUsername() .. '") !!!'
+            warn(
+                'The Java Server Patch isn\'t installed on the server! Kicking players from server-side is disabled. (Cannot kick player "%s") !!!',
+                player:getUsername()
             );
         end
     end
@@ -74,17 +77,60 @@ if isClient() or not isServer() then return end
         --- @type table<string, number>
         local playerRequestLast = {};
 
+        local cacheDir = Core.getMyDocumentFolder() .. '/Lua';
+
+        --- @type fun(args: EtherHammerXLogArguments): string
+        local logFunction = function(args)
+            --- @cast args EtherHammerXLogArguments
+            local username = '-';
+            if args.player then username = args.player:getUsername() end
+
+            local d = os.date('*t', Math.floor(args.time / 1000));
+            local year = tostring(d.year);
+            local month = TimeUtils.zeroPad(d.month, 2);
+            local day = TimeUtils.zeroPad(d.day, 2);
+            local hour = TimeUtils.zeroPad(d.hour, 2);
+            local min = TimeUtils.zeroPad(d.min, 2);
+            local sec = TimeUtils.zeroPad(d.sec, 2);
+            local msec = tostring(args.time);
+            msec = string.sub(msec, #msec - 3);
+            local timeOfDay = string.format('%s:%s:%s.%s', hour, min, sec, msec);
+            local path = string.format('ModLoader/mods/EtherHammerX/logs/%s_%s_%s.log', year, month, day);
+            local writer;
+            if not fileExists(string.format('%s/%s', cacheDir, path)) then
+                writer = getFileWriter(path, true, true);
+                writer:writeln('time player message');
+            else
+                writer = getFileWriter(path, true, true);
+            end
+            writer:writeln(string.format('%s %s "%s"', timeOfDay, username, string.gsub(args.message, '"', '\'')));
+            writer:close();
+            info(string.format('%s %s', username, args.message));
+        end;
+
         --- Dynamically loaded and fed from `keys.lua`.
         ---
         --- @type fun(player: IsoPlayer): string
         local serverKey = { func = 'server_key_function' };
 
+        --- @param player IsoPlayer
+        --- @param message any
+        local log = function(player, message)
+            if type(logFunction) ~= 'function' then
+                warn('Logging function not present.');
+                return;
+            end
+            logFunction({
+                time = getTimeInMillis(),
+                player = player,
+                message = tostring(message)
+            });
+        end
+
         --- Sends a followup request to cycle the key, requesting for the current key as well.
         ---
         --- @param player IsoPlayer The player object.
         --- @param username string The player username.
-        ---
-        --- @return void
         local requestHeartbeat = function(player, username)
             -- Set these twice. The reason is that due to the nature of dynamic functions, an error could stall the
             -- process.
@@ -117,17 +163,18 @@ if isClient() or not isServer() then return end
         ---
         --- @return void
         local function processLogout(username)
-            -- Dispose of status & request times.
+            playerStatuses[username] = nil;
+            playerRequestLast[username] = nil;
+            playerFuncs[username] = nil;
+            serverFragments[username] = nil;
+
+            -- NOTE: This is persistent data but to only be handled in situations where:
+            -- - The player's key sent is old and cycled
+            -- - The player died and respawned.
             --
-            -- NOTE: Delay the disposal for 10 second(s) to allow for laggy players and post-kick  packets from modules
-            -- to receive.
-            delaySeconds(function()
-                playerStatuses[username] = nil;
-                playerRequestLast[username] = nil;
-                playerKeys[username] = nil;
-                playerKeysOld[username] = nil;
-                playerFuncs[username] = nil;
-            end, 10);
+            -- If the memory builds up too much for servers later on this can be worked on then. -Jab, 5/10/2025
+            playerKeysOld[username] = playerKeys[username];
+            playerKeys[username] = nil;
         end
 
         --- (Generic kick-player function)
@@ -138,11 +185,11 @@ if isClient() or not isServer() then return end
         ---
         --- @return void
         local function kick(player, username, reason)
-            local message = 'Kicking player \'' .. username .. '\'.';
+            local message = string.format('Kicking player %s.', username);
             if reason then
-                message = message .. ' (Reason: \'' .. reason .. '\')';
+                message = string.format('%s (Reason: %s)', message, reason);
             end
-            log(message);
+            log(player, message);
             processLogout(username);
             kickPlayerFromServer(player, reason);
         end
@@ -157,21 +204,16 @@ if isClient() or not isServer() then return end
         local function onReceivePacket(player, id, data)
             if id == { string = 'heartbeat_response_command' } then
                 local username = player:getUsername();
-
                 local key = playerKeys[username];
                 if data.key ~= key then
-                    kick(player, username,
-                        'Client key mismatch. (client: "' ..
-                        tostring(data.key) .. '", server: "' .. tostring(key) .. '")');
+                    kick(player, username, string.format('Client key mismatch. (client: "%s", Server: "%s")',
+                        tostring(data.key),
+                        tostring(key)
+                    ));
                     return;
                 end
-
                 -- The player is now verified.
                 playerStatuses[username] = STATUS_VERIFIED;
-
-                -- if not verifiedOnce[username] then
-                -- info('Player \'' .. tostring(username) .. '\' verified.');
-                -- verifiedOnce[username] = true;
                 -- end
             elseif id == { string = 'handshake_request_command' } then
                 -- The initial handshake request requires a known key. Use the initially-generated key here.
@@ -199,13 +241,24 @@ if isClient() or not isServer() then return end
                 --- @type string, string, ReportAction
                 local message, reason, action = data.type, data.reason, data.action or 'kick';
                 if action == 'log' then
-                    if reason then message = message .. ' (' .. reason .. ')' end
-                    info(username .. ' was logged for ' .. message);
-                    log(message);
+                    if reason then
+                        message = string.format('%s (%s)', message, reason);
+                    end
+                    warn('%s was logged for %s',
+                        username,
+                        message
+                    );
+                    log(player, string.format('Logged for %s', message));
                 elseif action == 'kick' then
-                    if reason then message = message .. ' (' .. reason .. ')' end
-                    info(username .. ' was kicked for ' .. message);
-                    kick(player, username, message);
+                    if reason then
+                        message = string.format('%s (%s)', message, reason);
+                    end
+                    error('%s%s was kicked for %s',
+                        ANSIPrinter.KEYS['redbg'] .. ANSIPrinter.KEYS['white'],
+                        username,
+                        message
+                    );
+                    kick(player, username, string.format('Kicked for %s', message));
                 end
             elseif id == { string = 'request_player_info_command' } then
                 local username = player:getUsername();
@@ -240,7 +293,6 @@ if isClient() or not isServer() then return end
 
             if not key then
                 playerKeys[username] = { string = 'handshake_key' };
-                playerKeysOld[username] = playerKeys[username];
                 key = playerKeys[username];
             end
 
@@ -249,16 +301,29 @@ if isClient() or not isServer() then return end
                 if not packet.valid then
                     -- Check the older key. (Async API calls)
                     key = playerKeysOld[username];
+                    if not key then
+                        local message = string.format(
+                            'Player %s sent a packet, however the server has no known key. (Failed to decrypt).',
+                            username
+                        );
+                        warn(message);
+                        log(player, message);
+                        return;
+                    end
+                    packet = Packet(module, command, args);
                     packet:decrypt(key, function()
                         if not packet.valid then
                             if { string = 'bad_packet_action' } == 'kick' then
-                                local message = 'Player ' .. username .. ' sent a bad packet. (Failed to decrypt).';
-                                info(message);
+                                local message = string.format('Player %s sent a bad packet. (Failed to decrypt).',
+                                    username
+                                );
+                                warn(message);
                                 kick(player, username, 'Sent a bad packet.');
                             else
-                                local message = 'Player ' .. username .. ' sent a bad packet. (Failed to decrypt).';
-                                info(message);
-                                log(message);
+                                local message = string.format('Player %s sent a bad packet. (Failed to decrypt).',
+                                    username);
+                                warn(message);
+                                log(player, message);
                             end
                             return;
                         end
@@ -279,9 +344,9 @@ if isClient() or not isServer() then return end
                 if playerStatuses[username] == nil then
                     playerStatuses[username] = STATUS_AWAIT_HEARTBEAT_REQUEST;
                     playerKeys[username] = { string = 'handshake_key' };
-                    playerKeysOld[username] = playerKeys[username];
+                    -- playerKeysOld[username] = playerKeys[username];
                     playerRequestLast[username] = getTimeInMillis();
-                    info('Player \'' .. tostring(username) .. '\' joined the game.');
+                    info('Player %s joined the game.', username);
                 end
             end
         );
@@ -293,7 +358,7 @@ if isClient() or not isServer() then return end
             function(player)
                 local username = player:getUsername();
                 processLogout(username);
-                info('Player \'' .. tostring(username) .. '\' left the game.');
+                info('Player %s left the game.', username);
             end
         );
 
@@ -308,17 +373,19 @@ if isClient() or not isServer() then return end
             tickTimeLast = tickTimeNow;
 
             -- Update player statuses and request heartbeats.
+
             for username, player in pairs(PlayerListener.players) do
+                --- @cast username string
+                --- @cast player IsoPlayer
+
                 local status = playerStatuses[username];
                 if status == STATUS_AWAIT_HEARTBEAT_REQUEST then -- The player logged in and is ready to receive the first heartbeat.
                     if getTimeInMillis() - playerRequestLast[username] > { number = 'time_to_greet' } * 1000 then
                         kick(player, username, 'Verification timeout. (No response #1)');
-                        return;
                     end
                 elseif status == STATUS_AWAIT_HEARTBEAT_REQUEST_RECEIVE then -- Waiting on a response.
                     if getTimeInMillis() - playerRequestLast[username] > { number = 'time_to_greet' } * 1000 then
                         kick(player, username, 'Verification timeout. (No response #2)');
-                        return;
                     end
                 elseif { boolean = "should_heartbeat" } and status == STATUS_VERIFIED then -- Is verified and heartbeats are periodically requested.
                     if getTimeInMillis() - playerRequestLast[username] > { number = 'time_to_heartbeat' } * 1000 then

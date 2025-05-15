@@ -79,7 +79,7 @@ function EtherHammerXClientAPI.printGlobalFunctions(functions) end
 ---
 --- @param array string[] The array to check.
 --- @param value string The value to check.
---- 
+---
 --- @return boolean True if one or more values are in the array.
 function EtherHammerXClientAPI.arrayContains(array, value) end
 
@@ -102,3 +102,9 @@ function EtherHammerXClientAPI.getServerPlayerInfo(callback) end
 --- @alias ServerPlayerInfo { steamID: number, onlineID: number, username: string, accessLevel: string, position: {x: number, y: number, z: number} }
 --- @alias ServerPlayerInfoCallback fun(info: ServerPlayerInfo): void
 --- @alias ServerKeyFragmentCallback fun(config: EtherHammerXConfiguration, player: IsoPlayer): string
+
+--- @class EtherHammerXLogArguments
+--- @field player IsoPlayer | nil
+--- @field time number
+--- @field message string
+local EtherHammerXLogArguments = {};

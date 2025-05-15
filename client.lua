@@ -8,19 +8,34 @@
 local readonly = require 'asledgehammer/util/readonly';
 --- @type fun(callback: fun(), ticks: number)
 local delayTicks = (require 'asledgehammer/util/TimeUtils').delayTicks;
---- @type fun(callback: fun(module: string, command: string, args: table | nil))
-local addServerListener = (require 'asledgehammer/network/LuaNetworkEvents').addServerListener;
+local ANSIPrinter = require 'asledgehammer/util/ANSIPrinter';
+local LuaNetwork = require 'asledgehammer/network/LuaNetworkEvents';
+
 local Packet = require 'asledgehammer/network/Packet';
 
 -- (Only run if client-side of a multiplayer session)
 if not isClient() or isServer() then return end
 
-(function()
-    --- @param message any
-    local function info(message)
-        print('[EtherHammerX] :: ' .. tostring(message));
-    end
+-- The packet-module identity.
+local MODULE_ID = { string = 'module_id' };
 
+-- This is the initial key to perform the handshake.
+local HANDSHAKE_KEY = { string = 'handshake_key' };
+local key = HANDSHAKE_KEY;
+
+--- Float our own variable locally to prevent sending post-kick packets.
+local disconnected = false;
+
+local listener;
+
+local mod = 'EtherHammerX';
+local printer = ANSIPrinter:new(mod);
+local info = function(message, ...) printer:info(message, ...) end
+local success = function(message, ...) printer:success(message, ...) end
+local warn = function(message, ...) printer:warn(message, ...) end
+local error = function(message, ...) printer:error(message, ...) end
+
+local function run()
     --- @type ServerPlayerInfoCallback[]
     local playerInfoCallbacks = {};
     local playerInfoRequested = false;
@@ -30,9 +45,6 @@ if not isClient() or isServer() then return end
     --- @type fun(player: IsoPlayer): string
     local clientKey = { func = 'client_key_function' };
 
-    -- The packet-module identity.
-    local MODULE_ID = { string = 'module_id' };
-
     --- @type {name: string, code: string, runOnce: boolean, options: table}[]
     local modules = { raw = 'modules' };
 
@@ -41,18 +53,12 @@ if not isClient() or isServer() then return end
         module.options = readonly(module.options);
     end
 
-    -- This is the initial key to perform the handshake.
-    local HANDSHAKE_KEY = { string = 'handshake_key' };
-    local key = HANDSHAKE_KEY;
-
     --- @type EtherHammerXClientAPI
     local api = { table = 'client_api' };
 
-    --- Float our own variable locally to prevent sending post-kick packets.
-    local disconnected = false;
-
     -- NOTE: Override the test-code with the production-code for reports.
     function api.report(type, reason, action)
+        info(string.format('report: %s, %s, %s', tostring(type), tostring(reason), tostring(action)));
         local message = type;
         if reason then message = message .. ' (' .. reason .. ')' end
         local packet = Packet(MODULE_ID, { string = 'report_command' }, { type = type, reason = reason, action = action });
@@ -89,7 +95,9 @@ if not isClient() or isServer() then return end
     -- Force the table to be read-only. Rogue or maliciously-injected modules won't be able to mutate the API table.
     api = readonly(api);
 
-    addServerListener(function(packet_module, command, args)
+    -- (For restarting, remove the old listener and reinitialize)
+    listener = function(packet_module, command, args)
+
         -- Ignore everything else.
         if packet_module ~= MODULE_ID then return end
 
@@ -139,11 +147,20 @@ if not isClient() or isServer() then return end
                 playerInfoCallbacks = {};
             end
         end);
-    end);
+    end;
 
-    info('INIT');
+    LuaNetwork.addServerListener(listener);
+end;
 
+local function sendFirstPacket()
+    disconnected = false;
+    key = HANDSHAKE_KEY;
     -- Initialize formal request for first handshake.
     local packet = Packet(MODULE_ID, { string = 'handshake_request_command' });
-    packet:encryptAndSendToServer({ string = 'handshake_key' });
-end)();
+    packet:encryptAndSendToServer(key);
+end
+
+run();
+sendFirstPacket();
+
+return listener;

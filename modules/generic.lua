@@ -10,23 +10,40 @@ local cheats;
 local function runSlow(api)
     api.getServerPlayerInfo(function(_info)
         info = _info;
+        local player = getPlayer();
+        local clientAccessLevel = tostring(getPlayer():getAccessLevel());
+        -- Check for consistent accessLevel.
+        if cheats.access_level ~= 'off' then
+            if clientAccessLevel ~= 'None' and info and info.accessLevel ~= clientAccessLevel then
+                local reason = string.format('access-level mismatch {Client = %s, Server = %s}',
+                    clientAccessLevel,
+                    info.accessLevel
+                );
+                api.report('Generic', reason, cheats.access_level);
+                return;
+            end
+        end
+        if info.accessLevel == 'None' or clientAccessLevel == 'None' then
+            if cheats.god_mod ~= 'off' and player:isGodMod() then
+                api.report('Generic', 'god_mod when user is not staff.', cheats.access_level);
+                return;
+            end
+            if cheats.invisible ~= 'off' and player:isInvisible() then
+                api.report('Generic', 'invisible when user is not staff.', cheats.invisible);
+                return;
+            end
+            if cheats.ghost_mode ~= 'off' and player:isGhostMode() then
+                api.report('Generic', 'ghost_mode when user is not staff.', cheats.invisible);
+                return;
+            end
+        end
     end);
 end
 
 --- @param api EtherHammerXClientAPI
 local function runFast(api)
-    -- print('runFast()');
     local core = getCore();
     local player = getPlayer();
-
-    -- Check for consistent accessLevel.
-    if cheats.access_level ~= 'off' then
-        if info and info.accessLevel ~= player:getAccessLevel() then
-            local message = 'access-level mismatch (Client: ' ..
-                player:getAccessLevel() .. ', Server: ' .. info.accessLevel .. ')';
-            api.report('Generic', message, cheats.access_level);
-        end
-    end
 
     --- @type string[]
     ---
@@ -51,24 +68,9 @@ local function runFast(api)
             checkSeverity(cheats.debug_mode);
         end
 
-        if cheats.god_mod ~= 'off' and player:isGodMod() then
-            table.insert(active_cheats, 'god-mod');
-            checkSeverity(cheats.god_mod);
-        end
-
-        if cheats.invisible ~= 'off' and player:isInvisible() then
-            table.insert(active_cheats, 'invisibility');
-            checkSeverity(cheats.invisible);
-        end
-
         if cheats.invincible ~= 'off' and player:isInvincible() then
             table.insert(active_cheats, 'invincibility');
             checkSeverity(cheats.invincible);
-        end
-
-        if cheats.ghost_mode ~= 'off' and player:isGhostMode() then
-            table.insert(active_cheats, 'ghost-mode');
-            checkSeverity(cheats.ghost_mode);
         end
 
         if cheats.no_clip ~= 'off' and player:isNoClip() then
@@ -151,8 +153,6 @@ end
 --- @param api EtherHammerXClientAPI
 --- @param options {fast_check_time: number, info_time: number, cheats: table<string, 'kick'|'log'|'off'>}
 return function(api, options)
-    -- Initial fetch of server player-info.
-    runSlow(api);
 
     cheats = options.cheats or {
         access_level = 'kick',
@@ -196,6 +196,9 @@ return function(api, options)
     if not cheats.can_hear_all then cheats.can_hear_all = 'kick' end
     if not cheats.zombies_dont_attack then cheats.zombies_dont_attack = 'kick' end
     if not cheats.show_mp_info then cheats.show_mp_info = 'kick' end
+
+    -- Initial fetch of server player-info.
+    runSlow(api);
 
     local fast_check_time = options.fast_check_time or 60;
     local info_time = options.info_time or 60;

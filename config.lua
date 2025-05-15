@@ -8,6 +8,11 @@
 
 --- @return EtherHammerXConfiguration
 return {
+    --- Internal testing flag.
+    --- 
+    --- @type boolean
+    debug = false,
+
     --- The time (in second(s)) that the client must respond at the time on login.
     ---
     --- @type number

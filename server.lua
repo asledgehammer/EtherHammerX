@@ -381,11 +381,13 @@ end
                 local status = playerStatuses[username];
                 if status == STATUS_AWAIT_HEARTBEAT_REQUEST then -- The player logged in and is ready to receive the first heartbeat.
                     if getTimeInMillis() - playerRequestLast[username] > { number = 'time_to_greet' } * 1000 then
-                        kick(player, username, 'Verification timeout. (No response #1)');
+                        requestHeartbeat(player, username);
+                        -- kick(player, username, 'Verification timeout. (No response #1)');
                     end
                 elseif status == STATUS_AWAIT_HEARTBEAT_REQUEST_RECEIVE then -- Waiting on a response.
                     if getTimeInMillis() - playerRequestLast[username] > { number = 'time_to_greet' } * 1000 then
-                        kick(player, username, 'Verification timeout. (No response #2)');
+                        requestHeartbeat(player, username);
+                        -- kick(player, username, 'Verification timeout. (No response #2)');
                     end
                 elseif { boolean = "should_heartbeat" } and status == STATUS_VERIFIED then -- Is verified and heartbeats are periodically requested.
                     if getTimeInMillis() - playerRequestLast[username] > { number = 'time_to_heartbeat' } * 1000 then
